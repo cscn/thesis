@@ -60,14 +60,21 @@ prov_success = prov_success[-1,]
 write.csv(prov_success, file="prov_success.csv", row.names=FALSE)
 ```
 
+```{r}
+# load paths for provenance collection
+prov_paths = read.csv("prov_paths.csv", stringsAsFactors=FALSE)
+```
+
+
 Next, we iterate through the provenance path data frame and attempt to collect provenance data for each file.
 ```{r}
 # iterate through the number of rows in prov_paths
-for (i in (1:nrow(prov_paths))) {
+for (i in (58:nrow(prov_paths))) {
   # parse out metadata about the R file
   myrow = prov_paths[i,]
   doi = myrow$doi
-  filename = myrow$filename
+  filename = paste0(str_split(myrow$filename, ".R")[[1]][1],
+                    "_preproc.R")
   wd = myrow$wd
   cat(paste0(i, " out of ", nrow(prov_paths), " done\n"))
   # output path
@@ -79,6 +86,7 @@ for (i in (1:nrow(prov_paths))) {
   # capture provenance with error handling
   error = try(prov.capture(filename), silent = TRUE)[1]
   if (is.null(error)) {
+    load("../../get_prov.RData")
     # create the folder to store provenance from specific DOI, ignoring warnings
     # if the file already exists
     dir.create(paste0("../../", outpath), showWarnings = FALSE)
