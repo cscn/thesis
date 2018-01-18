@@ -26,21 +26,18 @@ for (r_file in r_files) {
 	# parse out file name, leaving out the ".R" part
 	filename = substr(r_file, 1, nchar(r_file) - 2)
 	for (run_type in c("source", "provR")) {
-		# save local variables for later access
+		# save local variables in case the script clears the workspace
 		save(run_type, dir_path_doi, r_files, r_file, filename,
 			 file="prov_data/get_prov.RData")
 		if (run_type == "source") {
 		# try to run the R file with error handling
 			error = try(source(r_file), silent = TRUE)[1]
-			
 		}
 		else {
 			error = try(prov.capture(r_file), silent = TRUE)[1]
 		}
 		# restore local variables
 		load("prov_data/get_prov.RData")
-		library(stringr)
-		library(provR)
 		# if there was no error
 		if (is.null(error)) {
 			error = NA
