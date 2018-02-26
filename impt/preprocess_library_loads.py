@@ -8,6 +8,8 @@ doi_direct = sys.argv[len(sys.argv) - 1]
 
 # filter for only R files
 r_files = [r_file for r_file in os.listdir(doi_direct) if re.match('.*\.R$', r_file)]
+# filter out preprocessed files
+r_files = [r_file for r_file in r_files if not "_preproc0" in r_file]
 
 # iterate through the number of rows in prov_paths
 for r_file in r_files:
@@ -15,7 +17,7 @@ for r_file in r_files:
 	filename = r_file.split(".R")[0]
 	file_path = doi_direct + "/" + r_file
 	# path to preprocessed file, named with suffix "_preproc"
-	preproc_path = doi_direct + "/" + filename + "_preproc" + ".R"
+	preproc_path = doi_direct + "/" + filename + "_preproc0" + ".R"
 	# path to temp file, named with suffix "_temp"
 	temp_path = doi_direct + "/" + filename + "_temp" + ".R"
 
