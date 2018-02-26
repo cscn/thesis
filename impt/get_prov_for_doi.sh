@@ -7,6 +7,9 @@
 #SBATCH -o ./logs/provR%j.out      # File to which STDERR will be written
 #SBATCH -e ./logs/provR%j.err      # File to which STDERR will be written
 
+# tell odyssey where to look for R libraries
+export R_LIBS_USER=$HOME/apps/R:$R_LIBS_USER
+
 # echo "Downloading dataset corresponding to DOI: $1..."
 # doi_direct=$(python download_dataset.py $1 $2)
 doi_direct="r_datasets/$1"
