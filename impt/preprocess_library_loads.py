@@ -46,7 +46,7 @@ for r_file in r_files:
 			for line in infile.readlines():
 				outfile.write(line)
 				# if the line clears the environment, re-declare "install_and_load" immediately after
-				if "rm(" in line:
+				if re.match("^rm\(", line):
 					with open("install_and_load.R", 'r') as install_and_load:
 						map(outfile.write, install_and_load.readlines())   
 
