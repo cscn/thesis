@@ -1,7 +1,7 @@
 ##### INJECTED TO FACILITATE PROVENANCE COLLECTION #########################
 # helper function to load packages, installing them if necessary
 library(stringr)
-install_and_load <- function(x){
+install_and_load <- function(x, ...){
   # if the input is a string
   if (is.character(x) & length(x) == 1) {
     # check if there are commas in the string
