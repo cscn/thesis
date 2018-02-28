@@ -18,4 +18,3 @@ install_and_load <- function(x, ...){
   }
 }
 ##### END OF PROVENANCE BLOCK ##############################################
-
