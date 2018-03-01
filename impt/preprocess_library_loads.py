@@ -27,11 +27,11 @@ for r_file in r_files:
 			# for each line in the input file
 			for line in infile.readlines():
 				# replace "library" calls
-				library_replace = re.sub("library\((.*)\)", "install_and_load(\"\\1\")", line)
+				library_replace = re.sub("library\(\"?([^\"]*)\"?\)", "install_and_load(\"\\1\")", line)
 				# replace "require" calls
-				require_replace = re.sub("require\((.*)\)", "install_and_load(\"\\1\")", library_replace)
+				require_replace = re.sub("require\(\"?([^\"]*)\"?\)", "install_and_load(\"\\1\")", library_replace)
 				# replace "install.packages" calls
-				install_replace = re.sub("install.packages\((.*)\)", "install_and_load(\\1)", require_replace)
+				install_replace = re.sub("install.packages\(\"?([^\"]*)\"?\)", "install_and_load(\\1)", require_replace)
 				# write the result to a temporary file
 				outfile.write(install_replace)
 
