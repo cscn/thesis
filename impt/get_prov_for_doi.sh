@@ -10,9 +10,7 @@
 # tell odyssey where to look for R libraries
 export R_LIBS_USER=$HOME/apps/R:$R_LIBS_USER
 
-# echo "Downloading dataset corresponding to DOI: $1..."
-# doi_direct=$(python download_dataset.py $1 $2)
-doi_direct="r_datasets/$1"
+doi_direct="$1/$2"
 
 # suppress R output by redirecting to /dev/null
 echo "Attempting to run and generate data provenance for raw R scripts in dataset..."
