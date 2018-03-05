@@ -3,6 +3,7 @@ import json
 import re
 import os
 import shutil
+import sys
 
 import pandas as pd
 import numpy as np
@@ -11,9 +12,14 @@ from helpers import get_runlog_data
 
 # accept commandline arguments for dataset directory and 
 # output directory for the resultant csv
-output_direct = sys.argv[:-1]
-dataset_direct = sys.argv[:-2]
+output_direct = sys.argv[-1]
+dataset_direct = sys.argv[-2]
 run_log_df, error_files = get_runlog_data(dataset_direct)
+
+# make a new directory to store the dataset
+# (if one doesn't exist)
+if not os.path.exists(output_direct):   
+	os.makedirs(output_direct)
 
 # write the dataframe to csv
 run_log_df.to_csv(output_direct + '/master_run_log.csv', index=False)
