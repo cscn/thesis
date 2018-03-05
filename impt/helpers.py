@@ -3,6 +3,9 @@ import json
 import re
 import os
 
+import pandas as pd
+import numpy as np
+
 def doi_to_directory(doi):
 	"""Converts a doi string to a more directory-friendly name
 	Parameters
@@ -31,8 +34,9 @@ def directory_to_doi(doi):
 	"""
 	return doi.replace("--", ":").replace("-", "/")
 
-def get_r_dois(dataverse_key, save=False, print_status=False):
-	"""Get list of dois for all R files in Harvard dataverse
+def get_r_dois(dataverse_key, save=False, print_status=False,
+			   api_url="https://dataverse.harvard.edu/api/search/"):
+	"""Get list of dois for all R files in a dataverse (defaulting to Harvard's)
 	Parameters
 	----------
 	dataverse_key : string 
@@ -41,7 +45,8 @@ def get_r_dois(dataverse_key, save=False, print_status=False):
 		   whether or not to save the result as a .txt file
 	print_status : boolean
 				   whether or not to print status messages
-	
+	api_url : string
+			  url pointing to the dataverse to get URLs for
 	Returns
 	-------
 	r_dois : list of string
@@ -59,7 +64,7 @@ def get_r_dois(dataverse_key, save=False, print_status=False):
 		if print_status:
 			print("Requesting page {} from API...".format(page_num))
 		# query the API for 1000 results
-		myresults = requests.get("https://dataverse.harvard.edu/api/search/",
+		myresults = requests.get(api_url,
 								 params= {"q": r_file_query, "type": "file",
 								 "key": dataverse_key,
 								 "start": str(1000 * page_num),
@@ -95,3 +100,38 @@ def get_r_dois(dataverse_key, save=False, print_status=False):
 		with open('r_dois.txt', 'a') as myfile:
 			map(myfile.write, r_dois)
 	return r_dois
+
+def get_runlog_data(path_to_datasets):
+	"""Aggregate run-time data for all datasets in the given
+	Parameters
+	----------
+	path_to_datasets : string 
+					   path to the directory containing processed datasets
+	Returns
+	-------
+	(run_data_df, error_dois) : tuple of (pandas.DataFrame, list of string)
+								a tuple containing a pandas DataFrame with the 
+								aggregated results of attempting to run the R code
+								in all the datasets, followed by a list of datasets
+								for which aggregating the results failed (should be
+								an empty list unless there was a catastrophic error)
+	
+	"""
+	# get list of dataset directories, ignoring macOS directory metadata file (if present)
+	doi_directs = [doi for doi in os.listdir(path_to_datasets) if doi != ".DS_Store"]
+	# initialize empty dataframe to store run logs of all the files
+	run_data_df = pd.DataFrame()
+	# initialize empty list to store problem doi's
+	error_dois = []
+
+	# iterate through directories and concatenate run logs
+	for doi_index in tqdm(range(len(doi_directs))):
+	    my_doi = doi_directs[doi_index]
+	    try:
+	        # assemble path
+	        my_path = path_to_datasets + "/" + my_doi + "/prov_data/" + "run_log.csv"
+	        # concatenate to dataframe
+	        run_data_df = pd.concat([run_data_df, pd.read_csv(my_path)])
+	    except:
+	        error_dois.append(my_doi)
+	return (run_data_df, error_dois)
