@@ -16,7 +16,7 @@ dataset_direct = sys.argv[:-2]
 run_log_df, error_files = get_runlog_data(dataset_direct)
 
 # write the dataframe to csv
-run_log_df.to_csv(output_direct + "/master_run_log.csv")
+run_log_df.to_csv(output_direct + '/master_run_log.csv', index=False)
 
 # if there were errors, write those to the directory as well
 if error_files:
