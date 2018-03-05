@@ -2,6 +2,7 @@ import requests
 import json
 import re
 import os
+import shutil
 
 import pandas as pd
 import numpy as np
@@ -118,20 +119,49 @@ def get_runlog_data(path_to_datasets):
 	
 	"""
 	# get list of dataset directories, ignoring macOS directory metadata file (if present)
-	doi_directs = [doi for doi in os.listdir(path_to_datasets) if doi != ".DS_Store"]
+	doi_directs = [doi for doi in os.listdir(path_to_datasets) if doi != '.DS_Store']
 	# initialize empty dataframe to store run logs of all the files
 	run_data_df = pd.DataFrame()
 	# initialize empty list to store problem doi's
 	error_dois = []
 
 	# iterate through directories and concatenate run logs
-	for doi_index in tqdm(range(len(doi_directs))):
-	    my_doi = doi_directs[doi_index]
-	    try:
-	        # assemble path
-	        my_path = path_to_datasets + "/" + my_doi + "/prov_data/" + "run_log.csv"
-	        # concatenate to dataframe
-	        run_data_df = pd.concat([run_data_df, pd.read_csv(my_path)])
-	    except:
-	        error_dois.append(my_doi)
+	for my_doi in doi_directs:
+		try:
+			# assemble path
+			my_path = path_to_datasets + '/' + my_doi + '/prov_data/' + 'run_log.csv'
+			# concatenate to dataframe
+			run_data_df = pd.concat([run_data_df, pd.read_csv(my_path)])
+		except:
+			error_dois.append(my_doi)
 	return (run_data_df, error_dois)
+
+def refresh_datasets(path_to_datasets):
+	"""Clean datasets of all traces of preprocessing and provenance collection
+	Parameters
+	----------
+	path_to_datasets : string 
+					   path to the directory containing processed datasets
+	"""
+	# get list of dataset directories, ignoring macOS directory metadata file (if present)
+	doi_directs = [doi for doi in os.listdir(path_to_datasets) if doi != '.DS_Store']
+
+	# iterate through directories, deleting prov_data directory and preprocessed files
+	for my_doi in doi_directs:
+		# assemble paths
+		doi_dir_path = path_to_datasets + '/' + my_doi
+		# get list of ignoring macOS directory metadata file (if present)
+		doi_files = [my_file for my_file in os.listdir(doi_dir_path) if\
+					 my_file != '.DS_Store' and re.match('.*_preproc0', my_file)]
+		# remove preprocessed files
+		for my_file in doi_files:
+			doi_file_path = doi_dir_path + '/' + my_file
+			try: 
+				os.remove(doi_file_path)
+			except OSError:
+				pass
+		# remove prov_data directory
+		try:
+			shutil.rmtree(doi_dir_path + '/prov_data')
+		except:
+			pass
