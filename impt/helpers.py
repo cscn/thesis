@@ -3,6 +3,7 @@ import json
 import re
 import os
 import shutil
+import fnmatch
 
 import pandas as pd
 import numpy as np
@@ -165,3 +166,45 @@ def refresh_datasets(path_to_datasets):
 			shutil.rmtree(doi_dir_path + '/prov_data')
 		except:
 			pass
+
+def find_file(pattern, path):
+	"""Recursively search the directory pointed to by path for a file matching pattern.
+	   Inspired by https://stackoverflow.com/questions/120656/directory-listing-in-python
+	Parameters
+	----------
+	pattern : string
+			  unix-style pattern to attempt to match to a file
+	path : string
+		   path to the directory to search
+
+	Returns 
+	-------
+	string 
+	path to a matching file or the empty string
+	"""
+	for root, dirs, files in os.walk(path):
+		for name in files:
+			if fnmatch.fnmatch(name, pattern):
+				return os.path.join(root, name)
+	return ''
+
+def find_dir(pattern, path):
+	"""Recursively search the directory pointed to by path for a directory matching pattern.
+	   Inspired by https://stackoverflow.com/questions/120656/directory-listing-in-python
+	Parameters
+	----------
+	pattern : string
+			  unix-style pattern to attempt to match to a directory
+	path : string
+		   path to the directory to search
+
+	Returns 
+	-------
+	string 
+	path to a matching directory or the empty string
+	"""
+    for root, dirs, files in os.walk(path):
+        for name in dirs:
+            if fnmatch.fnmatch(name, pattern):
+                return os.path.join(root, name)
+    return ''
