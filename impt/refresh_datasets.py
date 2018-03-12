@@ -1,4 +1,6 @@
 import sys
+import os
+import shutil
 
 def refresh_datasets(path_to_datasets):
 	"""Clean datasets of all traces of preprocessing and provenance collection
