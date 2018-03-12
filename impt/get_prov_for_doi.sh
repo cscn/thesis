@@ -15,12 +15,12 @@ doi_direct="$1/$2"
 # suppress R output by redirecting to /dev/null
 echo "Attempting to run and generate data provenance for raw R scripts in dataset..."
 Rscript --default-packages=methods,datasets,utils,grDevices,graphics,stats \
-	get_dataset_provenance.R $doi_direct "n" # &> /dev/null
+	get_dataset_provenance.R $doi_direct "n" &> /dev/null
 
 echo "Preprocessing library loads for the dataset..."
-python preprocess_library_loads.py $doi_direct
+python preprocess_r_scripts.py $doi_direct
 
 # suppress R output by redirecting to /dev/null
 echo "Attempting to run and generate data provenance for pre-processed R scripts in dataset..."
 Rscript --default-packages=methods,datasets,utils,grDevices,graphics,stats \
-	get_dataset_provenance.R $doi_direct "y" # &> /dev/null
+	get_dataset_provenance.R $doi_direct "y" &> /dev/null

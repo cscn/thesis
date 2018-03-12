@@ -295,10 +295,11 @@ def extract_filename(path):
 				empty string if none found
 	"""
 	# get last group of a path
-	file_name = extract_directory(path)
-	file_name = re.match(".*?\s*(\S+\.[^ \s,]+)\s*", file_name)
-	if file_name:
-		return file_name.group(1)
+	if path:
+		file_name = extract_directory(path)
+		file_name = re.match(".*?\s*(\S+\.[^ \s,]+)\s*", file_name)
+		if file_name:
+			return file_name.group(1)
 	return ''
 
 def preprocess_setwd(r_file, path, from_preproc=False):
