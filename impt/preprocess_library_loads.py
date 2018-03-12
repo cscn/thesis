@@ -41,6 +41,7 @@ for r_file in r_files:
 		# add in declaration for "install_and_load" at the head of the preprocessed file
 		with open("install_and_load.R", 'r') as infile:
 			map(outfile.write, infile.readlines())
+			outfile.write("\n")
 		# append modified code from .R file
 		with open(temp_path, 'r') as infile:
 			for line in infile.readlines():
@@ -48,7 +49,8 @@ for r_file in r_files:
 				# if the line clears the environment, re-declare "install_and_load" immediately after
 				if re.match("^rm\(", line):
 					with open("install_and_load.R", 'r') as install_and_load:
-						map(outfile.write, install_and_load.readlines())   
+						map(outfile.write, install_and_load.readlines())
+						outfile.write("\n")   
 
 	# delete the temporary file
 	os.remove(temp_path)

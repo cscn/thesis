@@ -242,6 +242,7 @@ def preprocess_lib(r_file, path, from_preproc=False):
 		# add in declaration for "install_and_load" at the head of the preprocessed file
 		with open("install_and_load.R", 'r') as infile:
 			map(outfile.write, infile.readlines())
+			outfile.write("\n")
 		# write code from .R file, replacing function calls as necessary
 		with open(file_to_copy, 'r') as infile:
 			for line in infile.readlines():
@@ -260,6 +261,7 @@ def preprocess_lib(r_file, path, from_preproc=False):
 				if re.match("^rm\(", line):
 					with open("install_and_load.R", 'r') as install_and_load:
 						map(outfile.write, install_and_load.readlines())
+						outfile.write("\n")
 	
 	# remove the file with _temp suffix if file was previously preprocessed
 	if from_preproc:
@@ -335,8 +337,7 @@ def preprocess_setwd(r_file, path, from_preproc=False):
 				# if the line contains a call to setwd
 				if contains_setwd:
 					# try to isolate only the directory portion of the intended path
-					wd_name_win = contains_setwd.group(1).split("\\")[-1]
-					wd_name = wd_name_win.split("/")[-1]
+					wd_name = extract_directory(contains_setwd.group(1))
 					# try to find the path to the working directory (if any)
 					path_to_wd = find_dir(wd_name, path)
 					# if a path was found, append modified setwd call to file
@@ -380,7 +381,7 @@ def preprocess_file_paths(r_file, path, from_preproc=False):
 		# write code from .R file, replacing function calls as necessary
 		with open(file_to_copy, 'r') as infile:
 			for line in infile.readlines():
-				contains_string = re.match("(?:\"([^\"]*)\")|(?:\'([^\']*)\')", line)
+				contains_string = re.search("(?:\"([^\"]*)\")|(?:\'([^\']*)\')", line)
 				# if the line contains a call to setwd
 				if contains_string:
 					# get the filename (if any)
@@ -398,7 +399,18 @@ def preprocess_file_paths(r_file, path, from_preproc=False):
 	if from_preproc:
 		os.remove(file_to_copy)
 
-def all_preproc(r_file, path, error_string):
+def all_preproc(r_file, path, error_string="error"):
+	"""Attempt to correct setwd, file path, and library errors
+	Parameters
+	----------
+	r_file: string
+			name of the R file to be preprocessed
+	path : string
+		   path to the directory containing the R file
+	error_string : string
+				   original error obtained by running the R script, defaults to
+				   "error", which will perform the preprocessing
+	"""
 	# parse out filename and construct file path
 	filename = r_file.split(".R")[0]
 	file_path = path + "/" + r_file
@@ -412,5 +424,3 @@ def all_preproc(r_file, path, error_string):
 	# else just copy and rename the file
 	else:
 		shutil.copyfile(file_path, preproc_path)
-
-

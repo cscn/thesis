@@ -1,4 +1,4 @@
-##### INJECTED TO FACILITATE PROVENANCE COLLECTION #########################
+##### INJECTED TO FACILITATE REPRODUCIBILITY ##################################
 # helper function to load packages, installing them if necessary
 if (!require("stringr", character.only=TRUE)){
       install.packages(pkgs="stringr", repos="http://cran.r-project.org")
@@ -20,4 +20,4 @@ install_and_load <- function(x, ...){
     }
   }
 }
-##### END OF PROVENANCE BLOCK ##############################################
+###############################################################################
