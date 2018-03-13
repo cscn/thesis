@@ -10,6 +10,8 @@
 # tell odyssey where to look for R libraries
 export R_LIBS_USER=$HOME/apps/R:$R_LIBS_USER
 
+echo $2 >&2
+
 doi_direct="$1/$2"
 
 # suppress R output by redirecting to /dev/null
