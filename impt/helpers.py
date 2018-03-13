@@ -185,7 +185,7 @@ def find_file(pattern, path):
 	for root, dirs, files in os.walk(path):
 		for name in files:
 			if fnmatch.fnmatch(name, pattern):
-				return os.path.join(root, name)
+				return '/'.join((os.path.join(root, name)).split('/')[1:])
 	return ''
 
 def find_dir(pattern, path):
@@ -206,7 +206,7 @@ def find_dir(pattern, path):
 	for root, dirs, files in os.walk(path):
 		for name in dirs:
 			if fnmatch.fnmatch(name, pattern):
-				return os.path.join(root, name)
+				return '/'.join((os.path.join(root, name)).split('/')[1:])
 	return ''
 
 def preprocess_lib(r_file, path, from_preproc=False):
