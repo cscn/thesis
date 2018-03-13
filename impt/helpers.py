@@ -246,22 +246,26 @@ def preprocess_lib(r_file, path, from_preproc=False):
 		# write code from .R file, replacing function calls as necessary
 		with open(file_to_copy, 'r') as infile:
 			for line in infile.readlines():
-				# replace "library" calls
-				library_replace = re.sub("library\(\"?([^\"]*)\"?\)",
-										 "install_and_load(\"\\1\")", line)
-				# replace "require" calls
-				require_replace = re.sub("require\(\"?([^\"]*)\"?\)",
-										 "install_and_load(\"\\1\")", library_replace)
-				# replace "install.packages" calls
-				install_replace = re.sub("install.packages\(\"?([^\"]*)\"?\)",
-										 "install_and_load(\"\\1\")", require_replace)
-				# write the preprocessed result
-				outfile.write(install_replace)
-				# if the line clears the environment, re-declare "install_and_load" immediately after
-				if re.match("^rm\(", line):
-					with open("install_and_load.R", 'r') as install_and_load:
-						map(outfile.write, install_and_load.readlines())
-						outfile.write("\n")
+				# ignore commented lines
+				if re.match("^#", line):
+					outfile.write(line)
+				else:
+					# replace "library" calls
+					library_replace = re.sub("library\s*\(\"?([^\"]*)\"?\)",
+											 "install_and_load(\"\\1\")", line)
+					# replace "require" calls
+					require_replace = re.sub("require\s*\(\"?([^\"]*)\"?\)",
+											 "install_and_load(\"\\1\")", library_replace)
+					# replace "install.packages" calls
+					install_replace = re.sub("install.packages\s*\(\"?([^\"]*)\"?\)",
+											 "install_and_load(\"\\1\")", require_replace)
+					# write the preprocessed result
+					outfile.write(install_replace)
+					# if the line clears the environment, re-declare "install_and_load" immediately after
+					if re.match("^rm\s*\(", line):
+						with open("install_and_load.R", 'r') as install_and_load:
+							map(outfile.write, install_and_load.readlines())
+							outfile.write("\n")
 	
 	# remove the file with _temp suffix if file was previously preprocessed
 	if from_preproc:
@@ -329,29 +333,38 @@ def preprocess_setwd(r_file, path, from_preproc=False):
 	else:
 		file_to_copy = file_path
 
+	# for storing return value
+	path_to_wd = ''
+
 	# wipe the preprocessed file and open it for writing
 	with open(preproc_path, 'w') as outfile:
 		# write code from .R file, replacing function calls as necessary
 		with open(file_to_copy, 'r') as infile:
 			for line in infile.readlines():
-				contains_setwd = re.match("setwd\(\"?([^\"]*)\"?\)", line)
-				# if the line contains a call to setwd
-				if contains_setwd:
-					# try to isolate only the directory portion of the intended path
-					wd_name = extract_directory(contains_setwd.group(1))
-					# try to find the path to the working directory (if any)
-					path_to_wd = find_dir(wd_name, path)
-					# if a path was found, append modified setwd call to file
-					if path_to_wd:
-						outfile.write("setwd(" + "\"" + path_to_wd + "\"" + ")")
-				else:
+				# ignore commented lines
+				if re.match("^#", line):
 					outfile.write(line)
+				else:
+					contains_setwd = re.match("setwd\s*\(\"?([^\"]*)\"?\)", line)
+					# if the line contains a call to setwd
+					if contains_setwd:
+						# try to isolate only the directory portion of the intended path
+						wd_name = extract_directory(contains_setwd.group(1))
+						# try to find the path to the working directory (if any)
+						path_to_wd = find_dir(wd_name, path)
+						# if a path was found, append modified setwd call to file
+						if path_to_wd:
+							outfile.write("setwd(" + "\"" + path_to_wd + "\"" + ")")
+					else:
+						outfile.write(line)
 	
 	# remove the file with _temp suffix if file was previously preprocessed
 	if from_preproc:
 		os.remove(file_to_copy)
+		
+	return path_to_wd
 
-def preprocess_file_paths(r_file, path, from_preproc=False):
+def preprocess_file_paths(r_file, path, wd_path='', from_preproc=False):
 	"""Attempt to correct setwd errors by finding the correct directory or deleting the function call
 	Parameters
 	----------
@@ -359,6 +372,8 @@ def preprocess_file_paths(r_file, path, from_preproc=False):
 			name of the R file to be preprocessed
 	path : string
 		   path to the directory containing the R file
+	wd_path : string
+			  path to the working directory the R file references, (root directory for file searches)
 	from_preproc : boolean
 				   whether the r_file has already been preprocessed (default False)
 	"""
@@ -376,25 +391,28 @@ def preprocess_file_paths(r_file, path, from_preproc=False):
 		os.rename(preproc_path, file_to_copy)
 	else:
 		file_to_copy = file_path
-
 	# wipe the preprocessed file and open it for writing
 	with open(preproc_path, 'w') as outfile:
 		# write code from .R file, replacing function calls as necessary
 		with open(file_to_copy, 'r') as infile:
 			for line in infile.readlines():
-				contains_string = re.search("(?:\"([^\"]*)\")|(?:\'([^\']*)\')", line)
-				# if the line contains a call to setwd
-				if contains_string:
-					# get the filename (if any)
-					file_name = extract_filename(contains_string.group(1))
-					# try to isolate only the filename portion of the intended path
-					if file_name:
-						# try to find the path to the working directory (if any)
-						path_to_file = find_file(file_name, path)
-						# if a path was found, append modified setwd call to file
-						if path_to_file:
-							line = re.sub(contains_string.group(1), path_to_file, line)
-				outfile.write(line)
+				# ignore commented lines
+				if re.match("^#", line):
+					outfile.write(line)
+				else:
+					contains_string = re.search("(?:\"([^\"]*)\")|(?:\'([^\']*)\')", line)
+					# if the line contains a call to setwd
+					if contains_string:
+						# get the filename (if any)
+						file_name = extract_filename(contains_string.group(1))
+						# try to isolate only the filename portion of the intended path
+						if file_name:
+							# try to find the path to the working directory (if any)
+							path_to_file = find_file(file_name, '/'.join([path, wd_path]))
+							# if a path was found, append modified setwd call to file
+							if path_to_file:
+								line = re.sub(contains_string.group(1), path_to_file, line)
+					outfile.write(line)
 	
 	# remove the file with _temp suffix if file was previously preprocessed
 	if from_preproc:
@@ -419,9 +437,9 @@ def all_preproc(r_file, path, error_string="error"):
 	preproc_path = path + "/" + filename + "__preproc__" + ".R"
 	# try all 3 preprocessing methods if there is an error
 	if error_string != "success":
-		preprocess_setwd(r_file, path)
+		wd_path = preprocess_setwd(r_file, path)
 		preprocess_lib(r_file, path, from_preproc=True)
-		preprocess_file_paths(r_file, path, from_preproc=True)
+		preprocess_file_paths(r_file, path, wd_path=wd_path, from_preproc=True)
 	# else just copy and rename the file
 	else:
 		shutil.copyfile(file_path, preproc_path)
