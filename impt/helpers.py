@@ -137,15 +137,22 @@ def get_runlog_data(path_to_datasets):
 			error_dois.append(my_doi)
 	return (run_data_df, error_dois)
 
-def refresh_datasets(path_to_datasets):
+def refresh_datasets(path_to_datasets, path_to_archive):
 	"""Clean datasets of all traces of preprocessing and provenance collection
 	Parameters
 	----------
 	path_to_datasets : string 
 					   path to the directory containing processed datasets
+	path_to_archive : string
+					  path to the directory to move preprocessed files to
 	"""
 	# get list of dataset directories, ignoring macOS directory metadata file (if present)
 	doi_directs = [doi for doi in os.listdir(path_to_datasets) if doi != '.DS_Store']
+
+	# create a new archive directory, deleting any directories with the same path and name
+	if os.path.exists(path_to_archive):
+		shutil.rmtree(path_to_archive)
+	os.makedirs(path_to_archive)
 
 	# iterate through directories, deleting prov_data directory and preprocessed files
 	for my_doi in doi_directs:
@@ -154,11 +161,17 @@ def refresh_datasets(path_to_datasets):
 		# get list of ignoring macOS directory metadata file (if present)
 		doi_files = [my_file for my_file in os.listdir(doi_dir_path) if\
 					 my_file != '.DS_Store' and re.match('.*__preproc__', my_file)]
+
+		# create a new doi archive directory, deleting any directories with the same path and name
+		if os.path.exists(path_to_archive + "/" + my_doi):
+			shutil.rmtree(path_to_archive + "/" + my_doi)
+		os.makedirs(path_to_archive + "/" + my_doi)
+
 		# remove preprocessed files
 		for my_file in doi_files:
 			doi_file_path = doi_dir_path + '/' + my_file
-			try: 
-				os.remove(doi_file_path)
+			try:
+				shutil.move(doi_file_path, '/'.join([path_to_archive, my_doi, my_file]))
 			except OSError:
 				pass
 		# remove prov_data directory
@@ -439,7 +452,7 @@ def all_preproc(r_file, path, error_string="error"):
 	if error_string != "success":
 		wd_path = preprocess_setwd(r_file, path)
 		preprocess_lib(r_file, path, from_preproc=True)
-		preprocess_file_paths(r_file, path, wd_path=wd_path, from_preproc=True)
+		# preprocess_file_paths(r_file, path, wd_path=wd_path, from_preproc=True)
 	# else just copy and rename the file
 	else:
 		shutil.copyfile(file_path, preproc_path)
