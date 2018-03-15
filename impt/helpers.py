@@ -196,11 +196,10 @@ def find_file(pattern, path):
 	path to a matching file or the empty string
 	"""
 	len_root_path = len(path.split('/'))
-	for backing_up in ['', '/..']:
-		for root, dirs, files in os.walk(path + backing_up):
-			for name in files:
-				if fnmatch.fnmatch(name, pattern):
-					return '/'.join((os.path.join(root, name)).split('/')[len_root_path:])
+	for root, dirs, files in os.walk(path):
+		for name in files:
+			if fnmatch.fnmatch(name, pattern):
+				return '/'.join((os.path.join(root, name)).split('/')[len_root_path:])
 	return ''
 
 def find_dir(pattern, path):
@@ -219,11 +218,10 @@ def find_dir(pattern, path):
 	path to a matching directory or the empty string
 	"""
 	len_root_path = len(path.split('/'))
-	for backing_up in ['', '/..']:
-		for root, dirs, files in os.walk(path + backing_up):
-			for name in dirs:
-				if fnmatch.fnmatch(name, pattern):
-					return '/'.join((os.path.join(root, name)).split('/')[len_root_path:])
+	for root, dirs, files in os.walk(path):
+		for name in dirs:
+			if fnmatch.fnmatch(name, pattern):
+				return '/'.join((os.path.join(root, name)).split('/')[len_root_path:])
 	return ''
 
 def preprocess_setwd(r_file, script_dir, from_preproc=False):
