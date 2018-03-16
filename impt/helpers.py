@@ -4,6 +4,7 @@ import re
 import os
 import shutil
 import fnmatch
+import pickle
 
 import pandas as pd
 import numpy as np
@@ -136,6 +137,39 @@ def get_runlog_data(path_to_datasets):
 		except:
 			error_dois.append(my_doi)
 	return (run_data_df, error_dois)
+
+def get_missing_files(path_to_datasets, pickle_path):
+	"""Aggregate missing files data for all datasets in the given path and pickle the result
+	Parameters
+	----------
+	path_to_datasets : string 
+					   path to the directory containing processed datasets
+	pickle_path : string
+				  path to pickle file to store the dictionary
+	"""
+	# get list of dataset directories, ignoring macOS directory metadata file (if present)
+	doi_directs = [doi for doi in os.listdir(path_to_datasets) if doi != '.DS_Store']
+	missing_dict = {}
+
+	# iterate through directories and concatenate run logs
+	for my_doi in doi_directs:
+		if my_doi.startswith("doi"):
+			missing_dict[my_doi] = []
+			try:
+				# assemble path
+				my_path = path_to_datasets + '/' + my_doi + '/prov_data/' + 'missing_files.txt'
+				# open the file for reading and collect the results
+				with open(my_path, 'r') as my_file:
+					for line in my_file.readlines():
+						if line.strip():
+							missing_dict[my_doi].append(line.strip())
+					missing_dict[my_doi] = list(set(missing_dict[my_doi]))
+			except:
+				pass
+
+	# pickle the file
+	with open(pickle_path + '/missing_files.pkl', 'wb') as handle:
+		pickle.dump(missing_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 def refresh_datasets(path_to_datasets, path_to_archive):
 	"""Clean datasets of all traces of preprocessing and provenance collection
