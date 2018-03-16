@@ -224,6 +224,89 @@ def find_dir(pattern, path):
 				return '/'.join((os.path.join(root, name)).split('/')[len_root_path:])
 	return ''
 
+def get_r_filename(r_file):
+	"""Remove the file extension from an r_file using regex. Probably unnecessary 
+	   but improves readability
+	Parameters
+	----------
+	r_file : string
+			 name of R file including file extension
+	Returns
+	-------
+	string
+	name of R file without file extension
+	"""
+	return re.split('\.[rR]$', r_file)[0]
+
+def extract_filename(path):
+	"""Parse out the file name from a file path
+	Parameters
+	----------
+	path : string
+		   input path to parse filename from
+	Returns
+	-------
+	file_name : string
+				file name (last part of path), 
+				empty string if none found
+	"""
+	# get last group of a path
+	if path:
+		file_name = os.path.basename(path)
+		file_name = re.match(".*?\s*(\S+\.[^ \s,]+)\s*", file_name)
+		if file_name:
+			return file_name.group(1)
+	return ''
+
+def find_rel_path(path, root_dir):
+	"""Attempt to search along a user-provided absolute path for 
+	   the provided file or directory
+	Parameters
+	----------
+	path : string 
+		   input path to search for
+	root_dir : string
+			   root directory to begin search from
+	Returns
+	-------
+	rel_path : string
+			   relative path to the directory or file or empty string
+			   if not found
+	"""
+	path_dirs = path.split('/')
+	item_name = path_dirs[-1]
+	if os.path.exists(root_dir + '/' + item_name):
+		return item_name
+	else:
+		# if path doesn't contain intermediate dirs, give up
+		if len(path_dirs) == 1:
+			return ''
+		intermediate_dirs = reversed(path_dirs[:-1])
+		try_path = item_name
+		# iterate through intermediate path directories,
+		# attempting to find the path
+		for my_dir in intermediate_dirs:
+			try_path = my_dir + '/' + try_path
+			if os.path.exists(root_dir + '/' + try_path):
+				return try_path
+		return ''
+
+def maybe_import_operation(r_command):
+	"""Searches an r command for common import functions
+	Parameters
+	----------
+	r_command : string
+				command from R file
+	Returns
+	-------
+	bool
+	"""
+	r_import_list = ['read', 'load', 'fromJSON', 'import', 'scan']
+	for pattern in r_import_list:
+		if re.search(pattern, r_command):
+			return True
+	return False
+
 def preprocess_setwd(r_file, script_dir, from_preproc=False):
 	"""Attempt to correct setwd errors by finding the correct directory or deleting the function call
 	Parameters
@@ -237,7 +320,7 @@ def preprocess_setwd(r_file, script_dir, from_preproc=False):
 
 	"""
 	# parse out filename and construct file path
-	filename = r_file.split('.R')[0]
+	filename = get_r_filename(r_file)
 	file_path = script_dir + '/' + r_file
 	# path to preprocessed file, named with suffix "_preproc"
 	preproc_path = script_dir + '/' + filename + '__preproc__' + '.R'
@@ -350,75 +433,6 @@ def preprocess_lib(r_file, path, from_preproc=False):
 		except:
 			pass
 
-def extract_filename(path):
-	"""Parse out the file name from a file path
-	Parameters
-	----------
-	path : string
-		   input path to parse filename from
-	Returns
-	-------
-	file_name : string
-				file name (last part of path), 
-				empty string if none found
-	"""
-	# get last group of a path
-	if path:
-		file_name = os.path.basename(path)
-		file_name = re.match(".*?\s*(\S+\.[^ \s,]+)\s*", file_name)
-		if file_name:
-			return file_name.group(1)
-	return ''
-
-def find_rel_path(path, root_dir):
-	"""Attempt to search along a user-provided absolute path for 
-	   the provided file or directory
-	Parameters
-	----------
-	path : string 
-		   input path to search for
-	root_dir : string
-			   root directory to begin search from
-	Returns
-	-------
-	rel_path : string
-			   relative path to the directory or file or empty string
-			   if not found
-	"""
-	path_dirs = path.split('/')
-	item_name = path_dirs[-1]
-	if os.path.exists(root_dir + '/' + item_name):
-		return item_name
-	else:
-		# if path doesn't contain intermediate dirs, give up
-		if len(path_dirs) == 1:
-			return ''
-		intermediate_dirs = reversed(path_dirs[:-1])
-		try_path = item_name
-		# iterate through intermediate path directories,
-		# attempting to find the path
-		for my_dir in intermediate_dirs:
-			try_path = my_dir + '/' + try_path
-			if os.path.exists(root_dir + '/' + try_path):
-				return try_path
-		return ''
-
-def maybe_import_operation(r_command):
-	"""Searches an r command for common import functions
-	Parameters
-	----------
-	r_command : string
-				command from R file
-	Returns
-	-------
-	bool
-	"""
-	r_import_list = ['read', 'load', 'fromJSON', 'import', 'scan']
-	for pattern in r_import_list:
-		if re.search(pattern, r_command):
-			return True
-	return False
-
 def preprocess_file_paths(r_file, script_dir, from_preproc=False):
 	"""Attempt to correct filepath errors 
 	Parameters
@@ -433,7 +447,7 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False):
 				   whether the r_file has already been preprocessed (default False)
 	"""
 	# parse out filename and construct file path
-	filename = r_file.split(".R")[0]
+	filename = get_r_filename(r_file)
 	file_path = script_dir + "/" + r_file
 	# path to preprocessed file, named with suffix "_preproc"
 	preproc_path = script_dir + "/" + filename + "__preproc__" + ".R"
@@ -496,7 +510,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 				   whether the r_file has already been preprocessed (default False)
 	"""
 	# parse out filename and construct file path
-	filename = r_file.split(".R")[0]
+	filename = get_r_filename(r_file)
 	file_path = script_dir + "/" + r_file
 	# path to preprocessed file, named with suffix "_preproc"
 	preproc_path = script_dir + "/" + filename + "__preproc__" + ".R"
@@ -536,8 +550,6 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 						if rel_path:
 							sourced_filename = os.path.basename(rel_path)
 							sourced_path = '/'.join((curr_wd + '/' + rel_path).split('/')[:-1])
-							print sourced_filename
-							print sourced_path
 							preprocess_source(sourced_filename, sourced_path, from_preproc)
 							with open(sourced_path + '/' + re.sub('.R\$', '__preproc__.R\$', sourced_filename), 
 								      'r') as infile:
@@ -566,9 +578,8 @@ def all_preproc(r_file, path, error_string="error"):
 				   original error obtained by running the R script, defaults to
 				   "error", which will perform the preprocessing
 	"""
-	print r_file
 	# parse out filename and construct file path
-	filename = r_file.split(".R")[0]
+	filename = get_r_filename(r_file)
 	file_path = path + "/" + r_file
 	# path to preprocessed file, named with suffix "_preproc"
 	preproc_path = path + "/" + filename + "__preproc__" + ".R"

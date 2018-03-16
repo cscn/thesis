@@ -33,9 +33,9 @@ if (!file.exists("prov_data/run_log.csv")) {
 
 # get correct list of r files to run the script on depending on commandline args
 if (preproc) {
-	r_files = list.files(".", pattern="__preproc__\\.R\\>", recursive=FALSE, full.names=FALSE)
+	r_files = list.files(".", pattern="__preproc__\\.[Rr]\\>", recursive=FALSE, full.names=FALSE)
 } else {
-	r_files = list.files(".", pattern="\\.R\\>", recursive=FALSE, full.names=FALSE)
+	r_files = list.files(".", pattern="\\.[Rr]\\>", recursive=FALSE, full.names=FALSE)
 	# parse out preprocessed files
 	preproc_files = grep("_preproc", r_files)
 	if (length(preproc_files) > 0) {
