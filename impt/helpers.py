@@ -413,7 +413,7 @@ def preprocess_lib(r_file, path, from_preproc=False):
 
 	"""
 	# parse out filename and construct file path
-	filename = r_file.split(".R")[0]
+	filename = get_r_filename(r_file)
 	file_path = path + "/" + r_file
 	# path to preprocessed file, named with suffix "__preproc__"
 	preproc_path = path + "/" + filename + "__preproc__" + ".R"
