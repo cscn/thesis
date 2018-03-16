@@ -433,7 +433,7 @@ def preprocess_lib(r_file, path, from_preproc=False):
 		except:
 			pass
 
-def preprocess_file_paths(r_file, script_dir, from_preproc=False):
+def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing=False):
 	"""Attempt to correct filepath errors 
 	Parameters
 	----------
@@ -443,8 +443,10 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False):
 		         path to the directory containing the R file
 	wd_path : string
 			  path to the working directory the R file references, (root directory for file searches)
-	from_preproc : boolean
+	from_preproc : bool
 				   whether the r_file has already been preprocessed (default False)
+	report_missing : bool
+					 report when a file can't be found
 	"""
 	# parse out filename and construct file path
 	filename = get_r_filename(r_file)
@@ -453,6 +455,8 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False):
 	preproc_path = script_dir + "/" + filename + "__preproc__" + ".R"
 	# path to temp file, named with suffix "_temp"
 	file_to_copy = script_dir + "/" + filename + "_temp" + ".R"
+	# path to write missing files to
+	tattle_path = script_dir + "/prov_data/missing_files.txt" 
 	# if file has already been preprocessed, create _temp file to copy from
 	if from_preproc:
 		try:
@@ -472,10 +476,10 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False):
 				# if not a commented line
 				if not re.match('^#', line):
 					contains_setwd = re.match("setwd\s*\(\"?([^\"]+)\"?\)", line)
-					# if the line contains a call to setwd
+					# track calls to setwd to look in the right place for files
 					if contains_setwd:
 						curr_wd += '/' + contains_setwd.group(1)
-					potential_path = re.search('(?:\"([^\"]+)\")|(?:\'([^\']+)\')', line)
+					potential_path = re.search('\((?:.*?file\s*=\s*|\s*)[\"\']([^\"]+\.\w+)[\"\']', line)
 					if potential_path:
 						# replace windows pathing with POSIX style
 						line = re.sub(re.escape('\\\\'), '/', line)
@@ -489,6 +493,10 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False):
 								# if a path was found, change the file part of the line
 								if rel_path:
 									line = re.sub(potential_path, rel_path, line)
+								# if the path wasn't found, report file as missing
+								elif report_missing:
+									with open(tattle_path, 'a+') as missing_out:
+										missing_out.write(potential_path + '\n')
 				outfile.write(line)
 	
 	# remove the file with _temp suffix if file was previously preprocessed
@@ -510,6 +518,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 				   whether the r_file has already been preprocessed (default False)
 	"""
 	# parse out filename and construct file path
+	preprocess_setwd(r_file, script_dir)
 	filename = get_r_filename(r_file)
 	file_path = script_dir + "/" + r_file
 	# path to preprocessed file, named with suffix "_preproc"
@@ -518,10 +527,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 	file_to_copy = script_dir + "/" + filename + "_temp" + ".R"
 	# if file has already been preprocessed, create _temp file to copy from
 	if from_preproc:
-		try:
-			os.rename(preproc_path, file_to_copy)
-		except:
-			file_to_copy = file_path
+		os.rename(preproc_path, file_to_copy)
 	else:
 		file_to_copy = file_path
 	curr_wd = script_dir
@@ -537,7 +543,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 					# if the line contains a call to setwd
 					if contains_setwd:
 						curr_wd += '/' + contains_setwd.group(1)
-					sourced_file = re.match('^\s*source\s*\((?:.*?file\s*=\s*|\s*)\"([^\"]+.R)\"', line)
+					sourced_file = re.match('^\s*source\s*\((?:.*?file\s*=\s*|\s*)[\"\']([^\"]+\.[Rr])[\"\']', line)
 					if sourced_file:
 						sourced_file = sourced_file.group(1)
 						# replace windows pathing with POSIX style
@@ -561,7 +567,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 	
 	# remove the file with _temp suffix if file was previously preprocessed
 	if from_preproc:
-		try: 
+		try:
 			os.remove(file_to_copy)
 		except:
 			pass
@@ -585,10 +591,9 @@ def all_preproc(r_file, path, error_string="error"):
 	preproc_path = path + "/" + filename + "__preproc__" + ".R"
 	# try all 3 preprocessing methods if there is an error
 	if error_string != "success":
-		preprocess_setwd(r_file, path)
 		preprocess_source(r_file, path, from_preproc=True)
 		preprocess_lib(r_file, path, from_preproc=True)
-		preprocess_file_paths(r_file, path, from_preproc=True)
+		preprocess_file_paths(r_file, path, from_preproc=True, report_missing=True)
 	# else just copy and rename the file
 	else:
 		shutil.copyfile(file_path, preproc_path)
