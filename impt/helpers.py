@@ -292,7 +292,7 @@ def extract_filename(path):
 			return file_name.group(1)
 	return ''
 
-def find_rel_path(path, root_dir):
+def find_rel_path(path, root_dir, is_dir=False):
 	"""Attempt to search along a user-provided absolute path for 
 	   the provided file or directory
 	Parameters
@@ -301,6 +301,8 @@ def find_rel_path(path, root_dir):
 		   input path to search for
 	root_dir : string
 			   root directory to begin search from
+	is_dir : bool
+			 whether the path is to a directory
 	Returns
 	-------
 	rel_path : string
@@ -309,7 +311,8 @@ def find_rel_path(path, root_dir):
 	"""
 	path_dirs = path.split('/')
 	item_name = path_dirs[-1]
-	if os.path.exists(root_dir + '/' + item_name):
+	test_fun = os.path.isdir if is_dir else os.path.exists
+	if test_fun(root_dir + '/' + item_name):
 		return item_name
 	else:
 		# if path doesn't contain intermediate dirs, give up
@@ -321,7 +324,7 @@ def find_rel_path(path, root_dir):
 		# attempting to find the path
 		for my_dir in intermediate_dirs:
 			try_path = my_dir + '/' + try_path
-			if os.path.exists(root_dir + '/' + try_path):
+			if test_fun(root_dir + '/' + try_path):
 				return try_path
 		return ''
 
@@ -380,11 +383,11 @@ def preprocess_setwd(r_file, script_dir, from_preproc=False):
 				if re.match("^#", line):
 					outfile.write(line)
 				else:
-					contains_setwd = re.match("setwd\s*\(\"?([^\"]*)\"?\)", line)
+					contains_setwd = re.match("\s*setwd\s*\(\"?([^\"]*)\"?\)", line)
 					# if the line contains a call to setwd
 					if contains_setwd:
 						# try to find the path to the working directory (if any)
-						path_to_wd = find_rel_path(contains_setwd.group(1), curr_wd)
+						path_to_wd = find_rel_path(contains_setwd.group(1), curr_wd, is_dir=True)
 						if not path_to_wd:
 							path_to_wd = find_dir(os.path.basename(contains_setwd.group(1)),
 												  curr_wd)
@@ -455,7 +458,7 @@ def preprocess_lib(r_file, path, from_preproc=False):
 					# write the preprocessed result
 					outfile.write(install_replace)
 					# if the line clears the environment, re-declare "install_and_load" immediately after
-					if re.match("^rm\s*\(", line):
+					if re.match("^\s*rm\s*\(", line):
 						with open("install_and_load.R", 'r') as install_and_load:
 							map(outfile.write, install_and_load.readlines())
 							outfile.write("\n")
@@ -509,7 +512,7 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 			for line in infile.readlines():
 				# if not a commented line
 				if not re.match('^#', line):
-					contains_setwd = re.match("setwd\s*\(\"?([^\"]+)\"?\)", line)
+					contains_setwd = re.match("\s*setwd\s*\(\"?([^\"]+)\"?\)", line)
 					# track calls to setwd to look in the right place for files
 					if contains_setwd:
 						curr_wd += '/' + contains_setwd.group(1)
@@ -573,7 +576,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 			for line in infile.readlines():
 				# if not a commented line
 				if not re.match('^#', line):
-					contains_setwd = re.match("setwd\s*\(\"?([^\"]*)\"?\)", line)
+					contains_setwd = re.match("\s*setwd\s*\(\"?([^\"]*)\"?\)", line)
 					# if the line contains a call to setwd
 					if contains_setwd:
 						curr_wd += '/' + contains_setwd.group(1)
