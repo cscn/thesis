@@ -493,7 +493,7 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 	# path to temp file, named with suffix "_temp"
 	file_to_copy = script_dir + "/" + filename + "_temp" + ".R"
 	# path to write missing files to
-	tattle_path = script_dir + "/prov_data/missing_files.txt" 
+	report_path = script_dir + "/prov_data/missing_files.txt" 
 	# if file has already been preprocessed, create _temp file to copy from
 	if from_preproc:
 		try:
@@ -532,8 +532,8 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 									line = re.sub(potential_path, rel_path, line)
 								# if the path wasn't found, report file as missing
 								elif report_missing:
-									with open(tattle_path, 'a+') as missing_out:
-										missing_out.write(potential_path + '\n')
+									with open(report_path, 'a+') as missing_out:
+										missing_out.write(r_file + ',' + potential_path + '\n')
 				outfile.write(line)
 	
 	# remove the file with _temp suffix if file was previously preprocessed
@@ -716,7 +716,7 @@ def get_pkgs_from_prov_json(prov_json):
     packages = []
     
     # Filter packages in user's environment by which ones were used
-    for package_dic"require('devtools');install_version('gdata', version='2.18.0', repos='http://cran.rstudio.com')"t in prov_json['activity']["environment"]["rdt:installedPackages"]:
+    for package_dict in prov_json['activity']["environment"]["rdt:installedPackages"]:
         if package_dict["package"] in used_packages:
             packages.append((package_dict["package"], package_dict["version"]))
     
