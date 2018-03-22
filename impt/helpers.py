@@ -2,12 +2,16 @@ import requests
 import json
 import re
 import os
+import sys
 import shutil
 import fnmatch
 import pickle
+import codecs
+import chardet
 
 import pandas as pd
 import numpy as np
+
 
 def doi_to_directory(doi):
 	"""Converts a doi string to a more directory-friendly name
@@ -103,6 +107,64 @@ def get_r_dois(dataverse_key, save=False, print_status=False,
 		with open('r_dois.txt', 'a') as myfile:
 			map(myfile.write, r_dois)
 	return r_dois
+
+def download_dataset(doi, destination, dataverse_key,
+					 api_url="https://dataverse.harvard.edu/api/search/"):
+	"""Download doi to the destination directory
+	Parameters
+	----------
+	doi : string
+		  doi of the dataset to be downloaded
+	destination : string
+				  path to the destination in which to store the downloaded directory
+	dataverse_key : string
+					dataverse api key to use for completing the download
+	api_url : string
+			  URL of the dataverse API to download the dataset from
+	Returns
+	-------
+	bool
+	whether the dataset was successfully downloaded to the destination
+	"""
+
+	# make a new directory to store the dataset
+	# (if one doesn't exist)
+	if not os.path.exists(destination):   
+		os.makedirs(destination)
+
+	try:
+		# query the dataverse API for all the files in a dataverse
+		files = requests.get("https://dataverse.harvard.edu/api/datasets/:persistentId",
+							 params= {"persistentId": doi, "key": dataverse_key})\
+							 .json()['data']['latestVersion']['files']
+	except:
+		return False
+
+	# convert DOI into a friendly directory name by replacing slashes and colons
+	doi_direct = destination + '/' + doi.replace("/", "-").replace(":", "--")
+
+	# make a new directory to store the dataset
+	if not os.path.exists(doi_direct):   
+		os.makedirs(doi_direct)
+
+	# for each file result
+	for file in files:
+		try:
+			# parse the filename and fileid 
+			filename = file['dataFile']['filename']
+			fileid = file['dataFile']['id']
+
+			# query the API for the file contents
+			response = requests.get("https://dataverse.harvard.edu/api/access/datafile/" + str(fileid),
+									params={"key": dataverse_key})
+
+			# write the response to correctly-named file in the dataset directory
+			with open(doi_direct + "/" + filename, 'w') as handle:
+				handle.write(response.content)
+		except:
+			return False
+
+	return True
 
 def get_runlog_data(path_to_datasets):
 	"""Aggregate run-time data for all datasets in the given
@@ -351,7 +413,7 @@ def preprocess_setwd(r_file, script_dir, from_preproc=False):
 	r_file: string
 			name of the R file to be preprocessed
 	script_dir : string
-		   		 path to the directory containing the R file
+				 path to the directory containing the R file
 	from_preproc : boolean
 				   whether the r_file has already been preprocessed (default False)
 
@@ -477,7 +539,7 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 	r_file: string
 			name of the R file to be preprocessed
 	script_dir : string
-		         path to the directory containing the R file
+				 path to the directory containing the R file
 	wd_path : string
 			  path to the working directory the R file references, (root directory for file searches)
 	from_preproc : bool
@@ -550,7 +612,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 	r_file : string
 			 name of the R file to be preprocessed
 	script_dir : string
-		          path to the directory containing the R file
+				  path to the directory containing the R file
 	from_preproc : boolean
 				   whether the r_file has already been preprocessed (default False)
 	"""
@@ -595,7 +657,7 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 							sourced_path = '/'.join((curr_wd + '/' + rel_path).split('/')[:-1])
 							preprocess_source(sourced_filename, sourced_path, from_preproc)
 							with open(sourced_path + '/' + re.sub('.R\$', '__preproc__.R\$', sourced_filename), 
-								      'r') as infile:
+									  'r') as infile:
 								map(outfile.write, infile.readlines())
 					else:
 						outfile.write(line)
@@ -636,88 +698,167 @@ def all_preproc(r_file, path, error_string="error"):
 		shutil.copyfile(file_path, preproc_path)
 
 def get_io_from_prov_json(prov_json):
-    """Identify input and output files from provenance JSON
-    Parameters
-    ----------
-    prov_json : OrderedDict
-                ordered dictionary generated from json prov file using python's json module
-                i.e. json.load(path_to_json_file, object_pairs_hook=OrderedDict)
-                
-    Returns
-    -------
-    (input_files, output_files, file_locs) : tuple of (list, list, dict)
-                                             input files and output files (empty lists if none) and 
-                                             dict mapping files to location (empty if none)
-    """
-    # initializing data structures
-    entity_to_file = {}
-    file_locs = {}
-    input_files = []
-    output_files = []
-    
-    # get file entity names and locations
-    for key, value in prov_json['entity'].items():
-        if value['rdt:type'] == 'File':
-            filename = value['rdt:name']
-            entity_to_file[key] = filename
-            file_locs[filename] = value['rdt:location']
-    
-    entities = set(entity_to_file.keys())
-    
-    # if a file entity is used by an activity, it must be an input file
-    for value in prov_json['used'].values():
-        if value['prov:entity'] in entities:
-            input_files.append(entity_to_file[value['prov:entity']])
-            
-    # if a file entity was generated by an activity, it must be an output file
-    for value in prov_json['wasGeneratedBy'].values():
-        if value['prov:entity'] in entities:
-            output_files.append(entity_to_file[value['prov:entity']])
+	"""Identify input and output files from provenance JSON
+	Parameters
+	----------
+	prov_json : OrderedDict
+				ordered dictionary generated from json prov file using python's json module
+				i.e. json.load(path_to_json_file, object_pairs_hook=OrderedDict)
+				
+	Returns
+	-------
+	(input_files, output_files, file_locs) : tuple of (list, list, dict)
+											 input files and output files (empty lists if none) and 
+											 dict mapping files to location (empty if none)
+	"""
+	# initializing data structures
+	entity_to_file = {}
+	file_locs = {}
+	input_files = []
+	output_files = []
+	
+	# get file entity names and locations
+	for key, value in prov_json['entity'].items():
+		if value['rdt:type'] == 'File':
+			filename = value['rdt:name']
+			entity_to_file[key] = filename
+			file_locs[filename] = value['rdt:location']
+	
+	entities = set(entity_to_file.keys())
+	
+	# if a file entity is used by an activity, it must be an input file
+	for value in prov_json['used'].values():
+		if value['prov:entity'] in entities:
+			input_files.append(entity_to_file[value['prov:entity']])
+			
+	# if a file entity was generated by an activity, it must be an output file
+	for value in prov_json['wasGeneratedBy'].values():
+		if value['prov:entity'] in entities:
+			output_files.append(entity_to_file[value['prov:entity']])
 
-    return input_files, output_files, file_locs
+	return input_files, output_files, file_locs
 
 def get_pkgs_from_prov_json(prov_json):
-    """Identify packages used from provenance JSON
-    Parameters
-    ----------
-    prov_json : OrderedDict
-                ordered dictionary generated from json prov file using python's json module
-                i.e. json.load(path_to_json_file, object_pairs_hook=OrderedDict)
-                
-    Returns
-    -------
-    packages : list of tuple of (string, string)
-               list of (package_name, version) tuples
-    """
-    # regular expression to capture library name
-    library_regex = re.compile(r"library\((?P<lib_name>.*)\)", re.VERBOSE)
+	"""Identify packages used from provenance JSON
+	Parameters
+	----------
+	prov_json : OrderedDict
+				ordered dictionary generated from json prov file using python's json module
+				i.e. json.load(path_to_json_file, object_pairs_hook=OrderedDict)
+				
+	Returns
+	-------
+	packages : list of tuple of (string, string)
+			   list of (package_name, version) tuples
+	"""
+	# regular expression to capture library name
+	library_regex = re.compile(r"library\((?P<lib_name>.*)\)", re.VERBOSE)
 
-    # set of used libraries
-    used_packages = set()
+	# set of used libraries
+	used_packages = set()
 
-    # Identify libraries being used in script and add them to set
-    for command in prov_json['activity'].values():
-        code_line = command['rdt:name']
-        # extract the package name from the JSON
-        package_match = re.match('^\s*library\s*\((?:.*?package\s*=\s*|\s*)[\"\']([^\"]+)[\"\']', 
-                                 code_line)
-        if not package_match:
-            package_match = re.match('^\s*require\s*\((?:.*?package\s*=\s*|\s*)[\"\']([^\"]+)[\"\']',
-                                     code_line)
-        # if a package name was found, add to the set
-        if package_match:
-            used_packages.add(package_match.group(1))
-    
-    # filter out pre-installed packages
-    used_packages -= set(['datasets', 'utils', 'graphics', 'grDevices', 
-                          'methods', 'stats', 'provR', 'devtools'])
-    
-    # list of (package, version) tuples
-    packages = []
-    
-    # Filter packages in user's environment by which ones were used
-    for package_dict in prov_json['activity']["environment"]["rdt:installedPackages"]:
-        if package_dict["package"] in used_packages:
-            packages.append((package_dict["package"], package_dict["version"]))
-    
-    return packages
+	# Identify libraries being used in script and add them to set
+	for command in prov_json['activity'].values():
+		code_line = command['rdt:name']
+		# extract the package name from the JSON
+		package_match = re.match('^\s*library\s*\((?:.*?package\s*=\s*|\s*)[\"\']([^\"]+)[\"\']', 
+								 code_line)
+		if not package_match:
+			package_match = re.match('^\s*require\s*\((?:.*?package\s*=\s*|\s*)[\"\']([^\"]+)[\"\']',
+									 code_line)
+		# if a package name was found, add to the set
+		if package_match:
+			used_packages.add(package_match.group(1))
+	
+	# filter out pre-installed packages
+	used_packages -= set(['datasets', 'utils', 'graphics', 'grDevices', 
+						  'methods', 'stats', 'provR', 'devtools'])
+	
+	# list of (package, version) tuples
+	packages = []
+	
+	# Filter packages in user's environment by which ones were used
+	for package_dict in prov_json['activity']["environment"]["rdt:installedPackages"]:
+		if package_dict["package"] in used_packages:
+			packages.append((package_dict["package"], package_dict["version"]))
+	
+	return packages
+
+"""
+The following block of file decoding functions are heavily-modified versions of 
+Sebastian RoccoSerra's answer on this Stack Overflow post:
+https://stackoverflow.com/questions/191359/how-to-convert-a-file-to-utf-8-in-python
+(block ends with a series of # marks)
+"""
+def get_encoding_type(current_file):
+	detectee = open(current_file, 'rb').read()
+	result = chardet.detect(detectee)
+	return result['encoding']
+
+def writeConversion(sourceFh, sourceFile, outputDir, targetFormat):
+	if not os.path.exists(outputDir):
+		os.makedirs(outputDir)
+	with codecs.open(outputDir + '/' + sourceFile, 'w', targetFormat) as targetFile:
+		for line in sourceFh:
+			targetFile.write(line)
+
+def convertFileWithDetection(sourceDir, sourceFile, outputDir, targetFormat, replace=False,
+							 logs=False):
+	if logs:
+		print("Converting '" + sourceFile + "'...")
+	sourcePath = os.path.join(sourceDir, sourceFile)
+	if replace:
+		os.rename(os.path.join(sourceDir, sourceFile),
+				  os.path.join(sourceDir, "__orig__" + sourceFile))
+		sourcePath = os.path.join(sourceDir,  "__orig__" + sourceFile)
+
+	sourceFormat = get_encoding_type(sourcePath)
+	
+	try:
+		with codecs.open(sourcePath, 'rU', sourceFormat) as sourceFh:
+			writeConversion(sourceFh, sourceFile, outputDir, targetFormat)
+			if logs:
+				print('Done.')
+		if replace:
+			os.remove(sourcePath)
+		return
+	except UnicodeDecodeError:
+		pass
+
+	print("Error: failed to convert " + sourceFile + ".")
+
+def convertFileBestGuess(filename):
+	sourceFormats = ['ascii', 'iso-8859-1']
+	for format in sourceFormats:
+		try:
+			with codecs.open(sourceFile, 'rU', format) as sourceFile:
+				writeConversion(sourceFile)
+				print('Done.')
+				return
+		except UnicodeDecodeError:
+			pass
+"""
+End of file decoding function block from Stack Overflow
+"""
+def convert_r_files(path, replace=False, output_path=''):
+	"""Convert all R files to utf-8 in the directory pointed to by path
+	Parameters
+	----------
+	path : string
+		   path to the directory containing R scripts
+	output_path : string 
+				  relative path from "path" parameter to directory
+				  to place converted files
+	replace : bool
+			  whether to replace original files with converted ones
+	"""
+	targetFormat = 'utf-8'
+	# calculate correct output 
+	output_path = 'converted' if not output_path else output_path
+	outputDir = path if replace else os.path.join(path, output_path)
+	orig_files = [my_file for my_file in os.listdir(path) if\
+				  my_file.endswith(".R") or my_file.endswith(".r")]
+	for my_file in orig_files:
+		convertFileWithDetection(path, my_file, outputDir, 'utf-8', replace)
+	
+
