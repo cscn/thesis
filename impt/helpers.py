@@ -105,7 +105,8 @@ def get_r_dois(dataverse_key, save=False, print_status=False,
 
 		# write dois to file, one-per-line
 		with open('r_dois.txt', 'a') as myfile:
-			map(myfile.write, r_dois)
+			for doi in r_dois:
+				myfile.write(doi)
 	return r_dois
 
 def download_dataset(doi, destination, dataverse_key,
@@ -498,8 +499,9 @@ def preprocess_lib(r_file, path, from_preproc=False):
 	# wipe the preprocessed file and open it for writing
 	with open(preproc_path, 'w') as outfile:
 		# add in declaration for "install_and_load" at the head of the preprocessed file
-		with open("install_and_load.R", 'r') as infile:
-			map(outfile.write, infile.readlines())
+		with open("install_and_load.R", 'r') as install_and_load:
+			for line in install_and_load.readlines():
+				outfile.write(line)
 			outfile.write("\n")
 		# write code from .R file, replacing function calls as necessary
 		with open(file_to_copy, 'r') as infile:
@@ -522,7 +524,8 @@ def preprocess_lib(r_file, path, from_preproc=False):
 					# if the line clears the environment, re-declare "install_and_load" immediately after
 					if re.match("^\s*rm\s*\(", line):
 						with open("install_and_load.R", 'r') as install_and_load:
-							map(outfile.write, install_and_load.readlines())
+							for line in install_and_load.readlines():
+								outfile.write(line)
 							outfile.write("\n")
 	
 	# remove the file with _temp suffix if file was previously preprocessed
@@ -608,7 +611,7 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 			pass
 
 def preprocess_source(r_file, script_dir, from_preproc=False):
-	"""Recursively paste any sourced R files into the current R file
+	"""Correct filenames of sourced files
 	Parameters
 	----------
 	r_file : string
@@ -655,12 +658,9 @@ def preprocess_source(r_file, script_dir, from_preproc=False):
 							rel_path = find_file(extract_filename(sourced_file), curr_wd)
 						# if relative path found, recursively call function on the sourced file
 						if rel_path:
-							sourced_filename = os.path.basename(rel_path)
-							sourced_path = '/'.join((curr_wd + '/' + rel_path).split('/')[:-1])
-							preprocess_source(sourced_filename, sourced_path, from_preproc)
-							with open(sourced_path + '/' + re.sub('.R\$', '__preproc__.R\$', sourced_filename), 
-									  'r') as infile:
-								map(outfile.write, infile.readlines())
+							sourced_filename = get_r_filename(os.path.basename(rel_path))
+							outfile.write('source(' + '/'.join(rel_path.split('/')[:-1]) +\
+										   '\"'+ sourced_filename + '__preproc__.R\")\n')
 					else:
 						outfile.write(line)
 				else:
