@@ -594,6 +594,8 @@ def preprocess_file_paths(r_file, script_dir, from_preproc=False, report_missing
 									line = re.sub(potential_path, rel_path, line)
 								# if the path wasn't found, report file as missing
 								elif report_missing:
+									if not os.path.exists(script_dir + "/prov_data"):
+										os.makedirs(script_dir + "/prov_data")
 									with open(report_path, 'a+') as missing_out:
 										missing_out.write(r_file + ',' + potential_path + '\n')
 				outfile.write(line)
