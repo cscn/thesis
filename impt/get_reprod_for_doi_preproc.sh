@@ -16,6 +16,6 @@ echo $2 >&2
 doi_direct="$1/$2"
 
 # suppress R output by redirecting to /dev/null
-echo "Attempting to run and generate data provenance for raw R scripts in dataset..."
+echo "Attempting to run and generate data provenance for pre-processed R scripts in dataset..."
 Rscript --default-packages=methods,datasets,utils,grDevices,graphics,stats \
-	get_dataset_reprod.R $doi_direct "n" &> /dev/null
+	get_dataset_reprod.R $doi_direct "y" &> /dev/null
