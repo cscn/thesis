@@ -8,4 +8,5 @@
 #SBATCH -e ./logs/doi_download%j.err      # File to which STDERR will be written
 
 # echo "Downloading dataset corresponding to DOI: $1..."
+echo $1 >&2
 doi_direct=$(python download_dataset.py $1 $2)
