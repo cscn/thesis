@@ -8,8 +8,8 @@ import pickle
 
 # make a new directory to store the dataset
 # (if one doesn't exist)
-if not os.path.exists("r_datasets"):   
-	os.makedirs("r_datasets")
+if not os.path.exists("dataverse_data"):   
+	os.makedirs("dataverse_data")
 
 # get DOI from command-line arguments
 doi = sys.argv[len(sys.argv) - 2]
@@ -21,7 +21,7 @@ files = requests.get("https://dataverse.harvard.edu/api/datasets/:persistentId",
 					 .json()['data']['latestVersion']['files']
 
 # convert DOI into a friendly directory name by replacing slashes and colons
-doi_direct = "r_datasets/" + doi.replace("/", "-").replace(":", "--")
+doi_direct = "dataverse_data/" + doi.replace("/", "-").replace(":", "--")
 
 # make a new directory to store the dataset
 if not os.path.exists(doi_direct):   

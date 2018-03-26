@@ -23,7 +23,7 @@ dir.create("prov_data", showWarnings = FALSE)
 
 # initialize dataframe to store results of attempting to run 
 # (and collect provenance on) the script
-if (!file.exists("prov_data/run_log.csv")) {
+if (!preproc) {
 	run_log = data.frame(doi = c("foo"), filename = c("bar"), run_type = c("bazz"),
 					 error = c("fizz"), stringsAsFactors = FALSE)
 	run_log = run_log[-1,]

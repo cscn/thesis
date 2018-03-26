@@ -860,5 +860,3 @@ def convert_r_files(path, replace=False, output_path=''):
 				  my_file.endswith(".R") or my_file.endswith(".r")]
 	for my_file in orig_files:
 		convertFileWithDetection(path, my_file, outputDir, 'utf-8', replace)
-	
-

@@ -3,6 +3,6 @@
 file="$1"
 while read -r doi
 do
-	sbatch ./get_prov_for_doi.sh $2 $doi
-	sleep 1
+	./get_reprod_for_doi_test.sh $2 $doi
+	sleep 2
 done < "$file"
