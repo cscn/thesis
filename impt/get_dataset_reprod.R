@@ -82,9 +82,5 @@ for (run_type in c("source", "provR")) {
 		# write the new log data into the log file
 		write.table(new_log_data, file="prov_data/run_log.csv", sep=",", append=TRUE,
 					row.names=FALSE, col.names=FALSE)
-		# if there was an error for the source command, skip the running of provR
-		if (error != "success" && run_type == "source") {
-			break
-		}
 	}
 }

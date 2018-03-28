@@ -42,7 +42,7 @@ def directory_to_doi(doi):
 	return doi.replace("--", ":").replace("-", "/")
 
 def get_r_dois(dataverse_key, save=False, print_status=False,
-			   api_url="https://dataverse.harvard.edu/api/search/"):
+			   api_url="https://dataverse.harvard.edu/api/search/", max_retries=5):
 	"""Get list of dois for all R files in a dataverse (defaulting to Harvard's)
 	Parameters
 	----------
@@ -65,34 +65,49 @@ def get_r_dois(dataverse_key, save=False, print_status=False,
 	# initialize variables to store current state of scraping
 	page_num = 0
 	r_dois = []
+	failures = 0
+	numfiles = 0
 
 	#  keep requesting until the API returns fewer than 1000 results
 	while True:
 		if print_status:
 			print("Requesting page {} from API...".format(page_num))
-		# query the API for 1000 results
-		myresults = requests.get(api_url,
-								 params= {"q": r_file_query, "type": "file",
-								 "key": dataverse_key,
-								 "start": str(1000 * page_num),
-								 "per_page": str(1000)}).json()['data']['items']
+		try:
+			# query the API for 1000 results
+			myresults = requests.get(api_url,
+									 params= {"q": r_file_query, "type": "file",
+									 "key": dataverse_key,
+									 "start": str(1000 * page_num),
+									 "per_page": str(1000)}).json()['data']['items']
 
-		if print_status:
-			print("Parsing results from page {}...".format(page_num))
-		
-		# iterate through results, recording dataset_citations
-		for myresult in myresults:
-			# extract the DOI (if any) from the result
-			doi_match = re.search("(doi:[^,]*)", myresult['dataset_citation'])
-			if doi_match:
-				r_dois.append(doi_match.group(1) + '\n')
+			if print_status:
+				print("Parsing results from page {}...".format(page_num))
+			
+			# iterate through results, recording dataset_citations
+			for myresult in myresults:
+				# extract the DOI (if any) from the result
+				doi_match = re.search("(doi:[^,]*)", myresult['dataset_citation'])
+				if doi_match:
+					r_dois.append(doi_match.group(1) + '\n')
+		# retry if failed to pull data
+		except:
+			if print_status:
+				print("Failed to fetch results for page {}. {} retries left".format(page_num,
+																					max_retries - 1 - failures))
+			if failures < max_retries:
+				failures += 1
+				continue
+			else:
+				break
 
 		# if fewer than 1000 results were returned; we must have reached the end
 		if len(myresults) < 1000:
 			if print_status:
 				print("Reached last page of results. Done.")
+				print("Total Number of R Files: {}".format(numfiles + len(myresults)))
 			break
 		page_num += 1
+		numfiles += 1000
 
 	# remove duplicate DOIs
 	r_dois = list(set(r_dois))
